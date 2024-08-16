@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Pipeline Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #pipelines-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            position: relative;
+        }
+        .pipeline {
+            width: 200px;
+            height: 100px;
+            background: lightblue;
+            border: 1px solid #007BFF;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+            position: absolute;
+            cursor: move;
+        }
+        .pipeline-name { font-size: 16px; font-weight: bold; }
+        .pipeline-controls { margin-top: 10px; }
+        .button { padding: 5px 10px; margin: 0 5px; cursor: pointer; }
+        .play-button { background-color: #28a745; color: white; }
+        .pause-button { background-color: #ffc107; color: black; }
+    </style>
+</head>
+<body>
+    <h1>Kubernetes Pipeline Manager</h1>
+    <button onclick="fetchPipelines()">Refresh Pipelines</button>
+    
+    <h2>Create New Pipeline</h2>
+    <form id="create-pipeline-form">
+        <label for="pipeline-name">Pipeline Name:</label>
+        <input type="text" id="pipeline-name" name="pipeline-name" required>
+        <button type="submit">Create Pipeline</button>
+    </form>
+
+    <h2>Existing Pipelines</h2>
+    <div id="pipelines-container"></div>
+
+    <script>
+        const apiBaseUrl = 'http://localhost:3000';
+        let draggedElement = null;
+
+        document.getElementById('create-pipeline-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const name = document.getElementById('pipeline-name').value;
+            try {
+                await fetch(`${apiBaseUrl}/pipelines`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                fetchPipelines();
+            } catch (error) {
+                console.error('Error creating pipeline:', error);
+            }
+        });
+
+        async function fetchPipelines() {
+            try {
+                const response = await fetch(`${apiBaseUrl}/pipelines`);
+                const pipelines = await response.json();
+                const container = document.getElementById('pipelines-container');
+                container.innerHTML = '';
+                pipelines.forEach(pipeline => {
+                    const pipelineDiv = document.createElement('div');
+                    pipelineDiv.className = 'pipeline';
+                    pipelineDiv.draggable = true;
+                    pipelineDiv.innerHTML = `
+                        <div class="pipeline-name">${pipeline.metadata.name}</div>
+                        <div class="pipeline-controls">
+                            <button class="button play-button" onclick="handlePlay('${pipeline.metadata.name}')">Play</button>
+                            <button class="button pause-button" onclick="handlePause('${pipeline.metadata.name}')">Pause</button>
+                        </div>
+                    `;
+                    container.appendChild(pipelineDiv);
+
+                    // Event listeners for drag and drop
+                    pipelineDiv.addEventListener('dragstart', handleDragStart);
+                    pipelineDiv.addEventListener('dragend', handleDragEnd);
+                });
+            } catch (error) {
+                console.error('Error fetching pipelines:', error);
+            }
+        }
+
+        function handlePlay(name) {
+            // Implement play functionality
+            console.log(`Play pipeline: ${name}`);
+        }
+
+        function handlePause(name) {
+            // Implement pause functionality
+            console.log(`Pause pipeline: ${name}`);
+        }
+
+        function handleDragStart(event) {
+            draggedElement = event.target;
+            event.dataTransfer.setData('text/plain', '');
+        }
+
+        function handleDragEnd(event) {
+            draggedElement = null;
+        }
+
+        document.getElementById('pipelines-container').addEventListener('dragover', (event) => {
+            event.preventDefault();
+        });
+
+        document.getElementById('pipelines-container').addEventListener('drop', (event) => {
+            event.preventDefault();
+            if (draggedElement) {
+                const containerRect = event.currentTarget.getBoundingClientRect();
+                const elementRect = draggedElement.getBoundingClientRect();
+                draggedElement.style.left = `${event.clientX - containerRect.left - (elementRect.width / 2)}px`;
+                draggedElement.style.top = `${event.clientY - containerRect.top - (elementRect.height / 2)}px`;
+            }
+        });
+
+        // Initial fetch
+        fetchPipelines();
+    </script>
+</body>
+</html>
